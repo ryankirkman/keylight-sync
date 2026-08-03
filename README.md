@@ -8,6 +8,8 @@ Bonjour-discoverable Elgato light.
 Zero third-party dependencies — AppKit, CoreMediaIO, and Foundation only.
 Builds with just the Xcode command line tools.
 
+<img src="docs/menu.png" alt="KeyLight Sync menu bar menu" width="380">
+
 ## How it works
 
 - **Camera detection** — listens to CoreMediaIO's
