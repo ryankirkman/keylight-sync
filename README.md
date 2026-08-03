@@ -65,5 +65,6 @@ Quits the app, unregisters the login item, removes
 
 ## Settings storage
 
-Preferences (auto-sync, watched camera, known lights) live in
-`~/Library/Preferences/com.ryankirkman.keylightsync.plist` via `UserDefaults`.
+Preferences (auto-sync, watched camera, turn-off delay, known lights) are
+stored with `UserDefaults` in a plist named after the app's bundle identifier
+in `~/Library/Preferences/`.
