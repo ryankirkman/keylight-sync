@@ -1,16 +1,30 @@
-<p align="center"><img src="docs/icon.png" width="128" alt="KeyLight Sync app icon"></p>
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="KeyLight Sync app icon">
+</p>
 
-# KeyLight Sync
+<h1 align="center">KeyLight Sync</h1>
 
-A tiny macOS menu bar app that turns an Elgato Key Light on when your camera
-turns on, and off when it turns off. Built for an Opal C1 (via Opal Composer)
-+ Elgato Key Light, but works with any camera macOS recognizes and any
-Bonjour-discoverable Elgato light.
+<p align="center">
+  <b>Your key light follows your camera.</b><br>
+  A tiny macOS menu bar app that turns an Elgato Key Light on when your
+  camera is in use — and off when it isn't.
+</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-blue" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Swift-AppKit%20only-F05138" alt="Swift, AppKit only">
+  <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="zero dependencies">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT license">
+</p>
+
+<p align="center">
+  <img src="docs/menu.png" width="380" alt="KeyLight Sync menu, showing the camera in use and the light on">
+</p>
+
+Built for an Opal C1 (via Opal Composer) + Elgato Key Light setup, but works
+with any camera macOS recognizes and any Bonjour-discoverable Elgato light.
 Zero third-party dependencies — AppKit, CoreMediaIO, and Foundation only.
 Builds with just the Xcode command line tools.
-
-<img src="docs/menu.png" alt="KeyLight Sync menu bar menu" width="380">
 
 ## How it works
 
@@ -28,33 +42,7 @@ Builds with just the Xcode command line tools.
   in the menu; default None) so brief camera flaps (switching between apps)
   don't flicker the light. Turning *on* is always immediate.
 
-## Build & install
-
-```sh
-make            # builds build/KeyLightSync.app
-make install    # copies it to /Applications
-open /Applications/KeyLightSync.app
-```
-
-To update after pulling new changes:
-
-```sh
-make reinstall  # rebuild, replace the installed app, relaunch
-```
-
-On first launch macOS will ask for **Local Network** permission — approve it,
-or the app can't reach the light.
-
-## Uninstall
-
-```sh
-make uninstall
-```
-
-Quits the app, unregisters the login item, removes
-`/Applications/KeyLightSync.app`, and deletes the preferences plist.
-
-## Menu
+## The menu
 
 - **Camera / Light status** — live state readout.
 - **Sync Light to Camera** — the automatic mode (default on). Toggling it on
@@ -69,12 +57,35 @@ Quits the app, unregisters the login item, removes
 - **Launch at Login** — uses `SMAppService`; works best when the app is in
   /Applications.
 
-## License
+## Build & install
 
-[MIT](LICENSE)
+```sh
+make            # builds build/KeyLightSync.app
+make install    # copies it to /Applications
+open /Applications/KeyLightSync.app
+```
+
+On first launch macOS will ask for **Local Network** permission — approve it,
+or the app can't reach the light.
+
+To update after pulling new changes:
+
+```sh
+make reinstall  # rebuild, replace the installed app, relaunch
+```
+
+To remove everything (app, login item, preferences):
+
+```sh
+make uninstall
+```
 
 ## Settings storage
 
 Preferences (auto-sync, watched camera, turn-off delay, known lights) are
 stored with `UserDefaults` in a plist named after the app's bundle identifier
 in `~/Library/Preferences/`.
+
+## License
+
+[MIT](LICENSE)
