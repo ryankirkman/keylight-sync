@@ -8,6 +8,8 @@
 	<string>KeyLight Sync</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.ryankirkman.keylightsync</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
 	<string>KeyLightSync</string>
 	<key>CFBundlePackageType</key>

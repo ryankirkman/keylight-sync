@@ -5,11 +5,19 @@ SOURCES  := $(wildcard Sources/*.swift)
 
 all: $(BINARY)
 
-$(BINARY): $(SOURCES) Info.plist
+$(BINARY): $(SOURCES) Info.plist AppIcon.icns
 	mkdir -p $(BUNDLE)/Contents/MacOS
+	mkdir -p $(BUNDLE)/Contents/Resources
 	swiftc -O $(SOURCES) -o $(BINARY)
 	cp Info.plist $(BUNDLE)/Contents/Info.plist
+	cp AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
 	codesign --force --sign - $(BUNDLE)
+
+# Regenerate AppIcon.icns from the drawing script (output is committed, so
+# this only needs re-running when scripts/makeicon.swift changes).
+icon:
+	swift scripts/makeicon.swift build/AppIcon.iconset
+	iconutil -c icns build/AppIcon.iconset -o AppIcon.icns
 
 run: all
 	$(BINARY)
@@ -29,4 +37,4 @@ uninstall:
 clean:
 	rm -rf build
 
-.PHONY: all run install uninstall clean
+.PHONY: all run install uninstall icon clean
