@@ -2,13 +2,22 @@ APP      := KeyLightSync
 BUNDLE   := build/$(APP).app
 BINARY   := $(BUNDLE)/Contents/MacOS/$(APP)
 SOURCES  := $(wildcard Sources/*.swift)
+VERSION  := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
+COMMIT   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+GENERATED := build/Version.swift
 
 all: $(BINARY)
 
-$(BINARY): $(SOURCES) Info.plist AppIcon.icns
+$(GENERATED): FORCE
+	@mkdir -p build
+	@printf 'let appVersion = "%s"\nlet appCommit = "%s"\n' "$(VERSION)" "$(COMMIT)" > $(GENERATED)
+
+FORCE:
+
+$(BINARY): $(SOURCES) $(GENERATED) Info.plist AppIcon.icns
 	mkdir -p $(BUNDLE)/Contents/MacOS
 	mkdir -p $(BUNDLE)/Contents/Resources
-	swiftc -O $(SOURCES) -o $(BINARY)
+	swiftc -O $(SOURCES) $(GENERATED) -o $(BINARY)
 	cp Info.plist $(BUNDLE)/Contents/Info.plist
 	cp AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
 	codesign --force --sign - $(BUNDLE)

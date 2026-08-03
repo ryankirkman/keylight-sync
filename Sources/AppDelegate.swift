@@ -167,6 +167,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
+        let about = NSMenuItem(
+            title: "KeyLight Sync \(appVersion) (\(appCommit))", action: nil, keyEquivalent: "")
+        about.isEnabled = false
+        menu.addItem(about)
         let quit = NSMenuItem(title: "Quit KeyLight Sync", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
