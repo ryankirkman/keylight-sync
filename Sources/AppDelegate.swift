@@ -14,7 +14,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Pending delayed "turn light off" so brief camera off/on flaps don't flicker the light.
     private var offDebounce: DispatchWorkItem?
-    private static let offDelay: TimeInterval = 1.5
+
+    /// How long the camera must stay off before the light is turned off.
+    private var offDelay = UserDefaults.standard.object(forKey: "offDelay") as? TimeInterval ?? 1.5 {
+        didSet { UserDefaults.standard.set(offDelay, forKey: "offDelay") }
+    }
+    private static let offDelayChoices: [(label: String, seconds: TimeInterval)] = [
+        ("None", 0), ("1.5 seconds", 1.5), ("5 seconds", 5),
+    ]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -58,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             let work = DispatchWorkItem { [weak self] in self?.lights.setAll(on: false) }
             offDebounce = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.offDelay, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + offDelay, execute: work)
         }
     }
 
@@ -138,6 +145,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         watch.submenu = watchMenu
         menu.addItem(watch)
 
+        let delayMenu = NSMenu()
+        for choice in Self.offDelayChoices {
+            let item = NSMenuItem(
+                title: choice.label, action: #selector(pickOffDelay(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = choice.seconds
+            item.state = offDelay == choice.seconds ? .on : .off
+            delayMenu.addItem(item)
+        }
+        let delay = NSMenuItem(title: "Turn Off Delay", action: nil, keyEquivalent: "")
+        delay.submenu = delayMenu
+        menu.addItem(delay)
+
         if #available(macOS 13.0, *) {
             let login = NSMenuItem(
                 title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
@@ -164,6 +184,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLight(_ sender: NSMenuItem) {
         lights.setAll(on: sender.representedObject as? Bool ?? true)
+    }
+
+    @objc private func pickOffDelay(_ sender: NSMenuItem) {
+        offDelay = sender.representedObject as? TimeInterval ?? 1.5
     }
 
     @objc private func pickCamera(_ sender: NSMenuItem) {
