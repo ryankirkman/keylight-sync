@@ -34,6 +34,12 @@ make install    # copies it to /Applications
 open /Applications/KeyLightSync.app
 ```
 
+To update after pulling new changes:
+
+```sh
+make reinstall  # rebuild, replace the installed app, relaunch
+```
+
 On first launch macOS will ask for **Local Network** permission — approve it,
 or the app can't reach the light.
 

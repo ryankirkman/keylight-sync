@@ -27,6 +27,14 @@ install: all
 	cp -R $(BUNDLE) /Applications/$(APP).app
 	@echo "Installed to /Applications/$(APP).app — launch it with: open /Applications/$(APP).app"
 
+# Update flow: rebuild from the current checkout, swap the installed app,
+# and relaunch. Settings and login-item registration are preserved.
+reinstall: all
+	-pkill -x $(APP)
+	$(MAKE) install
+	open /Applications/$(APP).app
+	@echo "Reinstalled and relaunched $(APP)."
+
 uninstall:
 	-/Applications/$(APP).app/Contents/MacOS/$(APP) --unregister-login-item
 	-pkill -x $(APP)
@@ -37,4 +45,4 @@ uninstall:
 clean:
 	rm -rf build
 
-.PHONY: all run install uninstall icon clean
+.PHONY: all run install reinstall uninstall icon clean
