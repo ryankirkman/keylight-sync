@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="KeyLight Sync app icon"></p>
+
 # KeyLight Sync
 
 A tiny macOS menu bar app that turns an Elgato Key Light on when your camera
