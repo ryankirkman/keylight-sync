@@ -20,10 +20,9 @@ Builds with just the Xcode command line tools.
   Last-known lights are persisted so control works right after launch even
   before discovery completes. Commands retry, because the light's HTTP
   server can be slow to accept connections.
-- **Debounce** — turning the light *off* is delayed (default 1.5 s,
-  configurable via **Turn Off Delay** in the menu) so brief camera flaps
-  (switching between apps) don't flicker the light. Turning *on* is
-  immediate.
+- **Debounce** — turning the light *off* can be delayed (**Turn Off Delay**
+  in the menu; default None) so brief camera flaps (switching between apps)
+  don't flicker the light. Turning *on* is always immediate.
 
 ## Build & install
 
@@ -56,7 +55,7 @@ Quits the app, unregisters the login item, removes
   "Opal Composer" camera; apps may use either, which is why "Any Camera" is
   the default.
 - **Turn Off Delay** — how long the camera must stay off before the light
-  turns off (None, 1.5 s, or 5 s; default 1.5 s). Remembered across launches.
+  turns off (None, 1.5 s, or 5 s; default None). Remembered across launches.
 - **Launch at Login** — uses `SMAppService`; works best when the app is in
   /Applications.
 

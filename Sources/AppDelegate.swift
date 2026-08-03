@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var offDebounce: DispatchWorkItem?
 
     /// How long the camera must stay off before the light is turned off.
-    private var offDelay = UserDefaults.standard.object(forKey: "offDelay") as? TimeInterval ?? 1.5 {
+    private var offDelay = UserDefaults.standard.object(forKey: "offDelay") as? TimeInterval ?? 0 {
         didSet { UserDefaults.standard.set(offDelay, forKey: "offDelay") }
     }
     private static let offDelayChoices: [(label: String, seconds: TimeInterval)] = [
@@ -187,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func pickOffDelay(_ sender: NSMenuItem) {
-        offDelay = sender.representedObject as? TimeInterval ?? 1.5
+        offDelay = sender.representedObject as? TimeInterval ?? 0
     }
 
     @objc private func pickCamera(_ sender: NSMenuItem) {
