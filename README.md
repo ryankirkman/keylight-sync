@@ -59,6 +59,10 @@ Quits the app, unregisters the login item, removes
 - **Launch at Login** — uses `SMAppService`; works best when the app is in
   /Applications.
 
+## License
+
+[MIT](LICENSE)
+
 ## Settings storage
 
 Preferences (auto-sync, watched camera, known lights) live in
