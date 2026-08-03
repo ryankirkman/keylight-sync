@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ryankirkman/keylight-sync/actions/workflows/ci.yml"><img src="https://github.com/ryankirkman/keylight-sync/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/macOS-13%2B-blue" alt="macOS 13+">
   <img src="https://img.shields.io/badge/Swift-AppKit%20only-F05138" alt="Swift, AppKit only">
   <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="zero dependencies">
