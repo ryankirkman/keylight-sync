@@ -19,7 +19,14 @@ install: all
 	cp -R $(BUNDLE) /Applications/$(APP).app
 	@echo "Installed to /Applications/$(APP).app — launch it with: open /Applications/$(APP).app"
 
+uninstall:
+	-/Applications/$(APP).app/Contents/MacOS/$(APP) --unregister-login-item
+	-pkill -x $(APP)
+	rm -rf /Applications/$(APP).app
+	-defaults delete com.ryankirkman.keylightsync
+	@echo "Uninstalled $(APP) (app, login item, and preferences removed)."
+
 clean:
 	rm -rf build
 
-.PHONY: all run install clean
+.PHONY: all run install uninstall clean

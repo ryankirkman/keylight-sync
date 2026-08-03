@@ -35,6 +35,15 @@ open /Applications/KeyLightSync.app
 On first launch macOS will ask for **Local Network** permission — approve it,
 or the app can't reach the light.
 
+## Uninstall
+
+```sh
+make uninstall
+```
+
+Quits the app, unregisters the login item, removes
+`/Applications/KeyLightSync.app`, and deletes the preferences plist.
+
 ## Menu
 
 - **Camera / Light status** — live state readout.
