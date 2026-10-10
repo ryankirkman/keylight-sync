@@ -1,6 +1,7 @@
 import AppKit
 import ServiceManagement
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()

@@ -11,8 +11,9 @@ struct KeyLight: Codable, Equatable {
 /// Discovers Elgato lights via Bonjour (_elg._tcp) and controls them over
 /// their local HTTP API. Remembers the last known lights across launches so
 /// control works even before discovery completes.
+@MainActor
 final class KeyLightManager: NSObject {
-    /// Called on the main queue when the light list or known on/off state changes.
+    /// Called on the main actor when the light list or known on/off state changes.
     var onUpdate: (() -> Void)?
 
     private(set) var lights: [KeyLight] = [] {
@@ -63,47 +64,48 @@ final class KeyLightManager: NSObject {
         lastKnownOn = on
         onUpdate?()
         for light in lights {
-            send(light: light, on: on, attemptsLeft: 3)
+            Task { await send(light: light, on: on, attempts: 3) }
         }
     }
 
-    private func send(light: KeyLight, on: Bool, attemptsLeft: Int) {
+    private func send(light: KeyLight, on: Bool, attempts: Int) async {
         var request = URLRequest(url: light.baseURL)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(
             withJSONObject: ["numberOfLights": 1, "lights": [["on": on ? 1 : 0]]])
 
-        session.dataTask(with: request) { [weak self] _, response, error in
-            let ok = error == nil && (response as? HTTPURLResponse)?.statusCode == 200
-            if !ok && attemptsLeft > 1 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self?.send(light: light, on: on, attemptsLeft: attemptsLeft - 1)
-                }
+        for attempt in 1...attempts {
+            if let (_, response) = try? await session.data(for: request),
+               (response as? HTTPURLResponse)?.statusCode == 200 {
+                return
             }
-        }.resume()
+            if attempt < attempts {
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
     }
 
     /// Reads the actual on/off state from the first reachable light.
     func refreshState() {
         guard let light = lights.first else { return }
-        session.dataTask(with: light.baseURL) { [weak self] data, _, _ in
-            guard let data,
+        Task {
+            guard let (data, _) = try? await session.data(from: light.baseURL),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let first = (json["lights"] as? [[String: Any]])?.first,
                   let on = first["on"] as? Int
             else { return }
-            DispatchQueue.main.async {
-                self?.lastKnownOn = (on != 0)
-                self?.onUpdate?()
-            }
-        }.resume()
+            lastKnownOn = (on != 0)
+            onUpdate?()
+        }
     }
 }
 
 // MARK: - Bonjour
 
-extension KeyLightManager: NetServiceBrowserDelegate, NetServiceDelegate {
+// Delegate callbacks arrive on the main run loop, where both are scheduled.
+extension KeyLightManager: @preconcurrency NetServiceBrowserDelegate,
+                           @preconcurrency NetServiceDelegate {
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService,
                            moreComing: Bool) {
         resolving.append(service)

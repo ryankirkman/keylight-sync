@@ -17,7 +17,7 @@ FORCE:
 $(BINARY): $(SOURCES) $(GENERATED) Info.plist AppIcon.icns
 	mkdir -p $(BUNDLE)/Contents/MacOS
 	mkdir -p $(BUNDLE)/Contents/Resources
-	swiftc -O $(SOURCES) $(GENERATED) -o $(BINARY)
+	swiftc -O -swift-version 6 $(SOURCES) $(GENERATED) -o $(BINARY)
 	cp Info.plist $(BUNDLE)/Contents/Info.plist
 	cp AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
 	codesign --force --sign - $(BUNDLE)
