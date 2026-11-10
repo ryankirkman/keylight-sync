@@ -8,9 +8,11 @@ GENERATED := build/Version.swift
 
 all: $(BINARY)
 
+# Rewritten only when the version or commit changes, so an unchanged tree doesn't recompile.
 $(GENERATED): FORCE
 	@mkdir -p build
-	@printf 'let appVersion = "%s"\nlet appCommit = "%s"\n' "$(VERSION)" "$(COMMIT)" > $(GENERATED)
+	@printf 'let appVersion = "%s"\nlet appCommit = "%s"\n' "$(VERSION)" "$(COMMIT)" > $@.tmp
+	@if cmp -s $@.tmp $@; then rm $@.tmp; else mv $@.tmp $@; fi
 
 FORCE:
 
