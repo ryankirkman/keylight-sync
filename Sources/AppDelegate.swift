@@ -8,6 +8,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let camera = CameraMonitor()
     private let lights = KeyLightManager()
 
+    private let lightStatus = NSMenuItem()
+    private let manual = NSMenuItem()
+    private let brightnessRow = SliderRow(
+        title: "Brightness", range: KeyLightManager.brightnessRange, step: 1) { "\($0)%" }
+    /// The light speaks mireds; the slider works in kelvin, warm on the left.
+    private let temperatureRow = SliderRow(
+        title: "Temperature", range: 2900...7000, step: 50) { "\($0) K" }
+
     /// When on, the light follows the camera automatically.
     private var autoSync = UserDefaults.standard.object(forKey: "autoSync") as? Bool ?? true {
         didSet { UserDefaults.standard.set(autoSync, forKey: "autoSync") }
@@ -31,7 +39,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         camera.watchedUID = UserDefaults.standard.string(forKey: "watchedUID")
         camera.onChange = { [weak self] on in self?.cameraStateChanged(on) }
-        lights.onUpdate = { [weak self] in self?.updateIcon() }
+        lights.onUpdate = { [weak self] in
+            self?.updateIcon()
+            self?.updateLightItems()
+        }
+        brightnessRow.onChange = { [weak self] in self?.lights.adjust(brightness: $0) }
+        temperatureRow.onChange = { [weak self] kelvin in
+            self?.lights.adjust(temperature: Int((1_000_000 / Double(kelvin)).rounded()))
+        }
 
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification,
@@ -90,6 +105,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.image = image
     }
 
+    /// Shows the light's state in the menu: status line, on/off item and sliders. Also runs
+    /// while the menu is open, when the read started by opening it comes back.
+    private func updateLightItems() {
+        let known = !lights.lights.isEmpty
+        if known {
+            let names = lights.lights.map(\.name).joined(separator: ", ")
+            switch lights.lastKnownOn {
+            case true?: lightStatus.title = "\(names): On"
+            case false?: lightStatus.title = "\(names): Off"
+            case nil: lightStatus.title = "\(names): —"
+            }
+        } else {
+            lightStatus.title = "Light: searching…"
+        }
+        let manualOn = lights.lastKnownOn != true
+        manual.title = manualOn ? "Turn Light On" : "Turn Light Off"
+        manual.isEnabled = known
+        manual.representedObject = manualOn
+
+        brightnessRow.show(lights.brightness, enabled: known)
+        temperatureRow.show(
+            lights.temperature.map { Int((1_000_000 / Double($0)).rounded()) }, enabled: known)
+    }
+
     // MARK: - Menu
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -102,18 +141,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         cameraStatus.isEnabled = false
         menu.addItem(cameraStatus)
 
-        let lightTitle: String
-        if lights.lights.isEmpty {
-            lightTitle = "Light: searching…"
-        } else {
-            let names = lights.lights.map(\.name).joined(separator: ", ")
-            switch lights.lastKnownOn {
-            case true?: lightTitle = "\(names): On"
-            case false?: lightTitle = "\(names): Off"
-            case nil: lightTitle = "\(names): —"
-            }
-        }
-        let lightStatus = NSMenuItem(title: lightTitle, action: nil, keyEquivalent: "")
         lightStatus.isEnabled = false
         menu.addItem(lightStatus)
 
@@ -125,14 +152,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sync.state = autoSync ? .on : .off
         menu.addItem(sync)
 
-        let manualOn = lights.lastKnownOn != true
-        let manual = NSMenuItem(
-            title: manualOn ? "Turn Light On" : "Turn Light Off",
-            action: #selector(toggleLight), keyEquivalent: "")
+        manual.action = #selector(toggleLight)
         manual.target = self
-        manual.isEnabled = !lights.lights.isEmpty
-        manual.representedObject = manualOn
         menu.addItem(manual)
+
+        updateLightItems()
+        for row in [brightnessRow, temperatureRow] {
+            let item = NSMenuItem()
+            item.view = row
+            menu.addItem(item)
+        }
 
         menu.addItem(.separator())
 

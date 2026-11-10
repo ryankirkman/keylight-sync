@@ -49,6 +49,10 @@ Builds with just the Xcode command line tools.
 - **Sync Light to Camera** — the automatic mode (default on). Toggling it on
   immediately syncs the light to the current camera state.
 - **Turn Light On / Off** — manual override.
+- **Brightness / Temperature** — sliders for the light's brightness (3–100%)
+  and colour temperature (2900–7000 K, warm on the left). They show what the
+  light currently has, apply as you drag, and work whether the light is on
+  or off. With several lights, all of them get the same values.
 - **Watch Camera** — "Any Camera" (default), or pin to a specific device.
   Note: Opal Composer exposes both the hardware "Opal C1" and a virtual
   "Opal Composer" camera; apps may use either, which is why "Any Camera" is

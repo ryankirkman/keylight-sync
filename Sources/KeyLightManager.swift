@@ -29,6 +29,20 @@ final class KeyLightManager: NSObject {
     /// a command couldn't be delivered and no light answers to say what it's doing.
     private(set) var lastKnownOn: Bool?
 
+    /// Brightness in percent and colour temperature in mireds (1,000,000 / kelvin, the unit
+    /// the light speaks), as last read from a light or set here; nil until first contact.
+    private(set) var brightness: Int?
+    private(set) var temperature: Int?
+    static let brightnessRange = 3...100
+    static let temperatureRange = 143...344   // 7000 K down to 2900 K
+
+    /// Bumped by every brightness/temperature change, so a state read that started
+    /// before it can't put the old values back.
+    private var adjustments = 0
+    /// Values changed but not yet sent, and whether the loop that sends them is running.
+    private var pendingLevels: [String: Int] = [:]
+    private var sendingLevels = false
+
     /// Bumped by every command. Retries and state reads that started before the newest
     /// command check it and give up, so they can't undo or misreport that command.
     private var generation = 0
@@ -83,18 +97,52 @@ final class KeyLightManager: NSObject {
         }
     }
 
-    /// False only when every attempt failed; a command dropped for a newer one counts as handled.
-    private func send(light: KeyLight, on: Bool, attempts: Int, generation: Int) async -> Bool {
+    /// Sets brightness (percent) and/or colour temperature (mireds) on every known light,
+    /// leaving on/off alone. Made to be called continuously from a slider: only the newest
+    /// values are sent, one request per light at a time.
+    func adjust(brightness: Int? = nil, temperature: Int? = nil) {
+        adjustments += 1
+        if let brightness {
+            self.brightness = brightness.clamped(to: Self.brightnessRange)
+            pendingLevels["brightness"] = self.brightness
+        }
+        if let temperature {
+            self.temperature = temperature.clamped(to: Self.temperatureRange)
+            pendingLevels["temperature"] = self.temperature
+        }
+        guard !sendingLevels, !pendingLevels.isEmpty else { return }
+        sendingLevels = true
+        Task {
+            var delivered = true
+            while !pendingLevels.isEmpty {
+                let levels = pendingLevels
+                pendingLevels = [:]
+                delivered = true
+                for light in lights where !(await put(levels, to: light)) {
+                    delivered = false
+                }
+            }
+            sendingLevels = false
+            if !delivered { refreshState() }   // show what the lights really have
+        }
+    }
+
+    /// Sends one state change to a light; true if the light accepted it.
+    private func put(_ fields: [String: Int], to light: KeyLight) async -> Bool {
         var request = URLRequest(url: light.baseURL)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(
-            withJSONObject: ["numberOfLights": 1, "lights": [["on": on ? 1 : 0]]])
+            withJSONObject: ["numberOfLights": 1, "lights": [fields]])
+        guard let (_, response) = try? await session.data(for: request) else { return false }
+        return (response as? HTTPURLResponse)?.statusCode == 200
+    }
 
+    /// False only when every attempt failed; a command dropped for a newer one counts as handled.
+    private func send(light: KeyLight, on: Bool, attempts: Int, generation: Int) async -> Bool {
         for attempt in 1...attempts {
             guard generation == self.generation else { return true }   // a newer command took over
-            if let (_, response) = try? await session.data(for: request),
-               (response as? HTTPURLResponse)?.statusCode == 200 {
+            if await put(["on": on ? 1 : 0], to: light) {
                 return true
             }
             if attempt < attempts {
@@ -104,9 +152,10 @@ final class KeyLightManager: NSObject {
         return generation != self.generation
     }
 
-    /// Reads the actual on/off state from the first reachable light.
+    /// Reads the actual on/off state, brightness and temperature from the first reachable light.
     func refreshState() {
         let generation = generation
+        let adjustments = adjustments
         let lights = lights
         Task {
             for light in lights {
@@ -116,12 +165,23 @@ final class KeyLightManager: NSObject {
                       let on = first["on"] as? Int
                 else { continue }
                 // A command sent while this read was in flight knows better than the reply.
-                guard generation == self.generation else { return }
-                lastKnownOn = (on != 0)
+                if generation == self.generation {
+                    lastKnownOn = (on != 0)
+                }
+                if adjustments == self.adjustments, !sendingLevels {
+                    brightness = first["brightness"] as? Int ?? brightness
+                    temperature = first["temperature"] as? Int ?? temperature
+                }
                 onUpdate?()
                 return
             }
         }
+    }
+}
+
+extension Int {
+    func clamped(to range: ClosedRange<Int>) -> Int {
+        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
     }
 }
 
