@@ -59,8 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func cameraStateChanged(_ on: Bool) {
         updateIcon()
         guard autoSync else { return }
-        offDebounce?.cancel()
-        offDebounce = nil
+        cancelPendingOff()
         if on {
             lights.setAll(on: true)
         } else {
@@ -68,6 +67,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             offDebounce = work
             DispatchQueue.main.asyncAfter(deadline: .now() + offDelay, execute: work)
         }
+    }
+
+    /// Drops a delayed "off" that hasn't fired yet. Anything that decides the light's state
+    /// anew (camera back on, a manual toggle, sync switched off) must call this first.
+    private func cancelPendingOff() {
+        offDebounce?.cancel()
+        offDebounce = nil
     }
 
     private func updateIcon() {
@@ -159,13 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         delay.submenu = delayMenu
         menu.addItem(delay)
 
-        if #available(macOS 13.0, *) {
-            let login = NSMenuItem(
-                title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
-            login.target = self
-            login.state = SMAppService.mainApp.status == .enabled ? .on : .off
-            menu.addItem(login)
-        }
+        let login = NSMenuItem(
+            title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        login.target = self
+        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(login)
 
         menu.addItem(.separator())
         let about = NSMenuItem(
@@ -181,6 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleAutoSync() {
         autoSync.toggle()
+        cancelPendingOff()
         if autoSync {
             // Adopt the current camera state immediately.
             lights.setAll(on: camera.isCameraOn)
@@ -188,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLight(_ sender: NSMenuItem) {
+        cancelPendingOff()
         lights.setAll(on: sender.representedObject as? Bool ?? true)
     }
 
@@ -202,7 +208,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLaunchAtLogin() {
-        guard #available(macOS 13.0, *) else { return }
         do {
             if SMAppService.mainApp.status == .enabled {
                 try SMAppService.mainApp.unregister()

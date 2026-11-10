@@ -28,6 +28,10 @@ final class KeyLightManager: NSObject {
     /// Last on/off state we observed or commanded; nil until first contact.
     private(set) var lastKnownOn: Bool?
 
+    /// Bumped by every command. Retries and state reads that started before the newest
+    /// command check it and give up, so they can't undo or misreport that command.
+    private var generation = 0
+
     private let browser = NetServiceBrowser()
     private var resolving: [NetService] = []
     private let session: URLSession
@@ -61,14 +65,16 @@ final class KeyLightManager: NSObject {
     /// Turns every known light on or off. Retries each light a few times
     /// because the lights' HTTP server can be slow to accept connections.
     func setAll(on: Bool) {
+        generation += 1
+        let generation = generation
         lastKnownOn = on
         onUpdate?()
         for light in lights {
-            Task { await send(light: light, on: on, attempts: 3) }
+            Task { await send(light: light, on: on, attempts: 3, generation: generation) }
         }
     }
 
-    private func send(light: KeyLight, on: Bool, attempts: Int) async {
+    private func send(light: KeyLight, on: Bool, attempts: Int, generation: Int) async {
         var request = URLRequest(url: light.baseURL)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -76,6 +82,7 @@ final class KeyLightManager: NSObject {
             withJSONObject: ["numberOfLights": 1, "lights": [["on": on ? 1 : 0]]])
 
         for attempt in 1...attempts {
+            guard generation == self.generation else { return }   // a newer command took over
             if let (_, response) = try? await session.data(for: request),
                (response as? HTTPURLResponse)?.statusCode == 200 {
                 return
@@ -88,15 +95,21 @@ final class KeyLightManager: NSObject {
 
     /// Reads the actual on/off state from the first reachable light.
     func refreshState() {
-        guard let light = lights.first else { return }
+        let generation = generation
+        let lights = lights
         Task {
-            guard let (data, _) = try? await session.data(from: light.baseURL),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let first = (json["lights"] as? [[String: Any]])?.first,
-                  let on = first["on"] as? Int
-            else { return }
-            lastKnownOn = (on != 0)
-            onUpdate?()
+            for light in lights {
+                guard let (data, _) = try? await session.data(from: light.baseURL),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let first = (json["lights"] as? [[String: Any]])?.first,
+                      let on = first["on"] as? Int
+                else { continue }
+                // A command sent while this read was in flight knows better than the reply.
+                guard generation == self.generation else { return }
+                lastKnownOn = (on != 0)
+                onUpdate?()
+                return
+            }
         }
     }
 }
