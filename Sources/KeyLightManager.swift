@@ -25,7 +25,8 @@ final class KeyLightManager: NSObject {
         }
     }
 
-    /// Last on/off state we observed or commanded; nil until first contact.
+    /// Last on/off state we observed or commanded; nil until first contact, and again when
+    /// a command couldn't be delivered and no light answers to say what it's doing.
     private(set) var lastKnownOn: Bool?
 
     /// Bumped by every command. Retries and state reads that started before the newest
@@ -64,17 +65,26 @@ final class KeyLightManager: NSObject {
 
     /// Turns every known light on or off. Retries each light a few times
     /// because the lights' HTTP server can be slow to accept connections.
+    /// The new state is shown at once; if a light never takes the command, the
+    /// state falls back to whatever the lights report (unknown if none answers).
     func setAll(on: Bool) {
         generation += 1
         let generation = generation
         lastKnownOn = on
         onUpdate?()
         for light in lights {
-            Task { await send(light: light, on: on, attempts: 3, generation: generation) }
+            Task {
+                let delivered = await send(light: light, on: on, attempts: 3, generation: generation)
+                guard !delivered, generation == self.generation else { return }
+                lastKnownOn = nil
+                onUpdate?()
+                refreshState()
+            }
         }
     }
 
-    private func send(light: KeyLight, on: Bool, attempts: Int, generation: Int) async {
+    /// False only when every attempt failed; a command dropped for a newer one counts as handled.
+    private func send(light: KeyLight, on: Bool, attempts: Int, generation: Int) async -> Bool {
         var request = URLRequest(url: light.baseURL)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -82,15 +92,16 @@ final class KeyLightManager: NSObject {
             withJSONObject: ["numberOfLights": 1, "lights": [["on": on ? 1 : 0]]])
 
         for attempt in 1...attempts {
-            guard generation == self.generation else { return }   // a newer command took over
+            guard generation == self.generation else { return true }   // a newer command took over
             if let (_, response) = try? await session.data(for: request),
                (response as? HTTPURLResponse)?.statusCode == 200 {
-                return
+                return true
             }
             if attempt < attempts {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+        return generation != self.generation
     }
 
     /// Reads the actual on/off state from the first reachable light.
