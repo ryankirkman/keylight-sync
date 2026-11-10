@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/menu.png" width="380" alt="KeyLight Sync menu, showing the camera in use and the light on">
+  <img src="docs/menu.png" width="292" alt="KeyLight Sync menu, showing the light on with its brightness and temperature sliders">
 </p>
 
 Built for an Opal C1 (via Opal Composer) + Elgato Key Light setup, but works
