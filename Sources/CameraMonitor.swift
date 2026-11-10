@@ -12,8 +12,6 @@ struct CameraDevice {
 final class CameraMonitor {
     /// Called on the main queue whenever the aggregate "camera in use" state changes.
     var onChange: ((Bool) -> Void)?
-    /// Called on the main queue whenever the device list changes.
-    var onDevicesChanged: (() -> Void)?
 
     private(set) var devices: [CameraDevice] = []
     private(set) var isCameraOn = false
@@ -119,7 +117,6 @@ final class CameraMonitor {
             }
         }
 
-        onDevicesChanged?()
         evaluate()
     }
 
